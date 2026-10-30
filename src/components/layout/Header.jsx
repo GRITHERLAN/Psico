@@ -32,7 +32,7 @@ export const Header = () => {
           <path d="M5 10.2c2.3-1.6 4.7-1.6 7 0s4.7 1.6 7 0" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" transform="translate(-1 -1.5)"></path>
           <path d="M5 10.2c2.3-1.6 4.7-1.6 7 0s4.7 1.6 7 0" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" transform="translate(-1 2.5)"></path>
         </svg>
-        Valeria Ríos
+        PsicoLP
       </a>
 
       <nav className="nlinks" aria-label="Principal">
