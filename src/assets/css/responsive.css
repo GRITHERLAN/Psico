@@ -1,0 +1,157 @@
+/*
+  responsive.css: adapta la landing a tablets y móviles.
+  se importa después de styles.css para que estas reglas ganen a las generales.
+  las condiciones de @media van en px porque dentro de @media el rem usa los 16px del navegador, no los 10px del html.
+*/
+@media (max-width: 1000px) {
+  .bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .c1 {
+    grid-row: span 1;
+  }
+}
+@media (max-width: 640px) {
+  .bento {
+    grid-template-columns: 1fr;
+  }
+  .c1,
+  .c2 {
+    grid-column: span 1;
+  }
+  .services {
+    padding: 9.6rem 0;
+  }
+}
+@media (max-width: 900px) {
+  .bk-grid {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+  }
+}
+@media (max-width: 560px) {
+  .booking {
+    padding: 9.6rem 0 11rem;
+  }
+  .bk-card {
+    padding: 2.2rem 1.8rem;
+    border-radius: 2.2rem;
+  }
+  .days {
+    gap: 0.5rem;
+  }
+  .day {
+    padding: 0.8rem 0;
+    border-radius: 1.2rem;
+  }
+  .day b {
+    font-size: 1.6rem;
+  }
+  .day small {
+    font-size: 1rem;
+  }
+  .slots {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .fields {
+    grid-template-columns: 1fr;
+  }
+  .opt {
+    padding: 1.6rem;
+  }
+  .opt .meta {
+    display: none;
+  }
+  .steps .sl {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 820px) {
+  .nlinks {
+    display: none;
+  }
+  .nav {
+    height: 5.4rem;
+    top: 1.2rem;
+  }
+  .nav.on .navcta {
+    margin-left: 0.8rem;
+  }
+  .login {
+    padding: 0 0.6rem;
+  }
+  .nav.on .login {
+    display: none;
+  }
+  #h1 br,
+  #h2 br {
+    display: none;
+  }
+  #h1 {
+    top: 17vh;
+    font-size: 7.4vw;
+    white-space: normal;
+    right: var(--gut);
+  }
+  .trust {
+    top: 44vh;
+  }
+  .topics {
+    width: 100%;
+    top: 50vh;
+    bottom: 18vh;
+  }
+  .topics > div span:not(.keep) {
+    display: none;
+  }
+  .topics > div {
+    font-size: 1.1rem;
+  }
+  .hcta {
+    bottom: 6vh;
+  }
+  #stmt {
+    white-space: normal;
+    font-size: 2.3rem;
+    max-width: 15em;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  #stmt br {
+    display: none;
+  }
+  .split {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 70vh;
+  }
+  #h2 {
+    padding: 16vh 0 0 6vw;
+    white-space: normal;
+  }
+  #row {
+    grid-template-columns: 1fr;
+    padding: 3vh 6vw 6vh;
+  }
+}
+@media (max-width: 420px) {
+  .btn.lg {
+    height: 5.6rem;
+    font-size: 1.6rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal,
+  .split-w .wi {
+    opacity: 1;
+    transform: none !important;
+    filter: none;
+  }
+}
