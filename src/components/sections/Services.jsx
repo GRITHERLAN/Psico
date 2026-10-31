@@ -58,6 +58,12 @@ export const Services = ({ onSelectService }) => {
     let cancelled = false;
     const cleanups = [];
 
+    /* la clase "on" marca que la sección está en pantalla; el CSS pausa sus animaciones cuando no la tiene */
+    const section = sectionRef.current;
+    const sectionObserver = new IntersectionObserver((entries) => section.classList.toggle('on', entries[0].isIntersecting));
+    sectionObserver.observe(section);
+    cleanups.push(() => sectionObserver.disconnect());
+
     // Ejemplo 1: tarjetas que se inclinan en 3D siguiendo el puntero
     const fine = window.matchMedia('(pointer: fine)').matches;
     sectionRef.current.querySelectorAll('.card').forEach((card) => {
@@ -73,6 +79,17 @@ export const Services = ({ onSelectService }) => {
         card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
         /* el bucle se detiene solo cuando ya casi llegó al objetivo, así no gasta batería en reposo */
         frame = Math.abs(targetX - rx) + Math.abs(targetY - ry) > 0.01 ? requestAnimationFrame(loop) : null;
+        /* al volver a reposo se suelta la capa de GPU que se reservó solo para la inclinación */
+        if (!frame && !targetX && !targetY) {
+          card.style.transform = '';
+          card.style.willChange = '';
+        }
+      };
+      /* will-change solo mientras la tarjeta se inclina: así no quedan 4 capas grandes reservadas todo el tiempo */
+      const startLoop = () => {
+        if (frame) return;
+        card.style.willChange = 'transform';
+        frame = requestAnimationFrame(loop);
       };
       const onMove = (e) => {
         const rect = card.getBoundingClientRect();
@@ -85,13 +102,14 @@ export const Services = ({ onSelectService }) => {
         if (fine) {
           targetX = (0.5 - py) * 8;
           targetY = (px - 0.5) * 8;
-          if (!frame) frame = requestAnimationFrame(loop);
+          startLoop();
         }
       };
       const onLeave = () => {
         targetX = 0;
         targetY = 0;
-        if (!frame) frame = requestAnimationFrame(loop);
+        /* en táctil nunca hubo inclinación, así que no hay nada que devolver a su sitio */
+        if (fine) startLoop();
       };
       card.addEventListener('pointermove', onMove);
       card.addEventListener('pointerleave', onLeave);
@@ -140,10 +158,21 @@ export const Services = ({ onSelectService }) => {
     const waveStart = performance.now();
     wavePath.setAttribute('d', buildWave(0, 1));
     /* al ver la tarjeta la onda se calma; si el puntero entra, se agita un momento y vuelve a calmarse */
+    let waveFrame = null;
+    let waveTick = 0;
+    const waveLoop = (now) => {
+      chaos += (target - chaos) * 0.02;
+      /* la onda se redibuja 1 de cada 2 frames (unos 30 fps): rehacer el trazado SVG en cada frame no se nota y cuesta el doble */
+      if (waveTick++ % 2 === 0) wavePath.setAttribute('d', buildWave((now - waveStart) / 1000, chaos));
+      /* el bucle sigue solo mientras se ve la tarjeta o aún queda agitación; si no, se detiene del todo */
+      waveFrame = visible || chaos > 0.001 ? requestAnimationFrame(waveLoop) : null;
+    };
     const waveObserver = new IntersectionObserver(
       (entries) => {
         visible = entries[0].isIntersecting;
-        if (visible) timers.push(setTimeout(() => (target = 0), 600));
+        if (!visible) return;
+        timers.push(setTimeout(() => (target = 0), 600));
+        if (!waveFrame) waveFrame = requestAnimationFrame(waveLoop);
       },
       { threshold: 0.4 },
     );
@@ -153,16 +182,6 @@ export const Services = ({ onSelectService }) => {
       timers.push(setTimeout(() => (target = 0), 900));
     };
     waveCard.addEventListener('pointerenter', onWaveEnter);
-    let waveFrame = null;
-    const waveLoop = (now) => {
-      /* solo se redibuja si se ve la tarjeta o si aún queda algo de agitación */
-      if (visible || chaos > 0.001) {
-        chaos += (target - chaos) * 0.02;
-        wavePath.setAttribute('d', buildWave((now - waveStart) / 1000, chaos));
-      }
-      waveFrame = requestAnimationFrame(waveLoop);
-    };
-    waveFrame = requestAnimationFrame(waveLoop);
     cleanups.push(() => {
       cancelAnimationFrame(waveFrame);
       waveObserver.disconnect();

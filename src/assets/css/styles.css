@@ -488,16 +488,34 @@ body.ready .fade-up {
   transform-origin: 50% 60%;
   will-change: transform;
 }
+/* capas del paisaje apiladas; overflow visible para que la niebla que se desplaza no muestre un corte en el borde */
+#scene svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* cada niebla es una capa propia que se mueve en la GPU: el desenfoque se pinta una vez, no en cada frame */
+.fog,
+.fog2 {
+  will-change: transform;
+}
 .fog {
   animation: fog 38s ease-in-out infinite alternate;
 }
 .fog2 {
   animation: fog 52s ease-in-out infinite alternate-reverse;
 }
+/* 15% del ancho de la capa equivale a las 60 unidades que recorría la niebla dentro del viewBox de 400 */
 @keyframes fog {
   to {
-    transform: translateX(6rem);
+    transform: translateX(15%);
   }
+}
+/* fuera de pantalla se pausan la neblina y las ondas del agua */
+#enfoque:not(.on) #scene * {
+  animation-play-state: paused;
 }
 .ripple {
   animation: rip 6s ease-in-out infinite;
@@ -595,6 +613,15 @@ body.ready .fade-up {
 .cell {
   perspective: 100rem;
 }
+/* las tarjetas y la cinta entran sin blur: desenfocar bloques tan grandes (con sombras) cuesta mucho por frame */
+.cell.reveal,
+.marquee.reveal {
+  filter: none;
+  transition:
+    opacity var(--base) var(--ease-expo),
+    transform var(--base) var(--ease-expo);
+  transition-delay: var(--d, 0s);
+}
 .cell.reveal {
   transform: translateY(4rem) scale(0.96);
 }
@@ -612,7 +639,7 @@ body.ready .fade-up {
   display: flex;
   flex-direction: column;
   transform-style: preserve-3d;
-  will-change: transform;
+  /* will-change se activa desde JS solo mientras la tarjeta se inclina */
   box-shadow:
     0 0.1rem 0.2rem rgba(11, 29, 58, 0.04),
     0 2.4rem 4.8rem -2.8rem rgba(11, 29, 58, 0.22);
@@ -943,6 +970,11 @@ body.ready .fade-up {
   animation: mq 40s linear infinite;
 }
 .marquee:hover .track {
+  animation-play-state: paused;
+}
+/* fuera de pantalla se pausan los bucles infinitos de la sección (respiración, órbita, pulsos, cinta...) */
+.services:not(.on) *,
+.services:not(.on) *::after {
   animation-play-state: paused;
 }
 @keyframes mq {

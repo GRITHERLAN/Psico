@@ -24,7 +24,12 @@ const smooth = (x) => {
   const v = clamp(x);
   return v * v * (3 - 2 * v);
 };
-const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+/* mezcla dos colores y escribe el resultado en out; se reutiliza el mismo array para no crear miles de objetos por frame */
+const mix = (out, a, b, k) => {
+  out[0] = a[0] + (b[0] - a[0]) * k;
+  out[1] = a[1] + (b[1] - a[1]) * k;
+  out[2] = a[2] + (b[2] - a[2]) * k;
+};
 
 /* busca entre qué dos valores de Q cae q y devuelve el valor intermedio de la tabla */
 const lerpTable = (table, q) => {
@@ -50,6 +55,7 @@ export const Background = () => {
     const current = { tip: -0.3, half: 0.3, soft: 0.1 };
     const pointsX = new Float32Array(48);
     const pointsY = new Float32Array(48);
+    const color = [0, 0, 0];
 
     /*
       dibuja el cuenco píxel a píxel: para cada píxel se calcula la distancia al borde de la curva
@@ -88,7 +94,8 @@ export const Background = () => {
           if (tip > 0 && py < tip && px < half * aspect * Math.pow(Math.max(0, 1 - py / tip), 0.72)) distance = -distance;
           distance -= ROUND;
           const glow = 1 - smooth((distance + soft) / (2 * soft));
-          const color = glow < 0.38 ? mix(WHITE, RIM, smooth(glow / 0.38)) : mix(RIM, CORE, smooth((glow - 0.38) / 0.62));
+          if (glow < 0.38) mix(color, WHITE, RIM, smooth(glow / 0.38));
+          else mix(color, RIM, CORE, smooth((glow - 0.38) / 0.62));
           /* cada píxel ocupa 4 posiciones en el array: rojo, verde, azul y opacidad */
           const o = (j * WIDTH + i) * 4;
           data[o] = color[0];
@@ -100,6 +107,18 @@ export const Background = () => {
       ctx.putImageData(image, 0, 0);
     };
 
+    let frame = null;
+    let introDone = false;
+    /*
+      desde que la sección Enfoque llega arriba, todo lo que sigue (Servicios, Agendar, footer) tiene fondo opaco
+      y tapa el canvas por completo: dibujarlo ahí sería trabajo que nadie ve.
+    */
+    let covered = false;
+    const isCovered = () => {
+      const cover = document.getElementById('enfoque');
+      return !!cover && cover.getBoundingClientRect().top <= 0;
+    };
+
     /* al hacer scroll solo se actualiza el objetivo; el dibujo se hace en el bucle de animación */
     const onScroll = () => {
       const q = window.scrollY / window.innerHeight;
@@ -107,38 +126,54 @@ export const Background = () => {
       target.half = lerpTable(HALF, q);
       target.soft = lerpTable(SOFT, q);
       /* sin animaciones se salta directo a la forma final y se dibuja una vez */
-      if (reduceMotion) drawBowl(target.tip, target.half, target.soft);
+      if (reduceMotion) {
+        drawBowl(target.tip, target.half, target.soft);
+        return;
+      }
+      covered = isCovered();
+      /* si el canvas vuelve a verse y el bucle estaba parado, se reanuda */
+      if (!covered && !frame && introDone) frame = requestAnimationFrame(loop);
     };
+
+    const start = performance.now();
+    let tick = 0;
+    const loop = (now) => {
+      /* tapado y con la intro terminada: el bucle se detiene hasta que el scroll lo vuelva a destapar */
+      if (covered && introDone) {
+        frame = null;
+        return;
+      }
+      frame = requestAnimationFrame(loop);
+      const elapsed = now - start;
+      if (!introDone) {
+        /* intro: durante el primer segundo el cuenco crece desde abajo hasta su forma */
+        const k = smooth((elapsed - 250) / 1050);
+        current.tip = -0.3 + (target.tip + 0.3) * k;
+        current.half = 0.3 + (target.half - 0.3) * k;
+        current.soft = 0.1 + (target.soft - 0.1) * k;
+        if (elapsed > 1300) introDone = true;
+      } else {
+        /* después persigue al objetivo un 12% por frame: así el cambio con el scroll es suave y no a saltos */
+        current.tip += (target.tip - current.tip) * 0.12;
+        current.half += (target.half - current.half) * 0.12;
+        current.soft += (target.soft - current.soft) * 0.12;
+      }
+      /*
+        en reposo (intro terminada y forma ya alcanzada) solo queda la respiración, que es muy lenta:
+        basta con redibujar 1 de cada 6 frames. durante el scroll se dibuja en cada frame.
+      */
+      const settled =
+        introDone && Math.abs(target.tip - current.tip) + Math.abs(target.half - current.half) + Math.abs(target.soft - current.soft) < 0.0005;
+      if (settled && tick++ % 6) return;
+      /* drift añade una pequeña respiración con senos para que la luz nunca esté del todo quieta */
+      const drift = introDone ? 1 : clamp((elapsed - 250) / 1050);
+      drawBowl(current.tip + Math.sin(now * 0.00033 + 1.3) * 0.02 * drift, current.half + Math.sin(now * 0.0005) * 0.015 * drift, current.soft);
+    };
+
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
-
-    let frame = null;
-    if (!reduceMotion) {
-      const start = performance.now();
-      let introDone = false;
-      const loop = (now) => {
-        const elapsed = now - start;
-        if (!introDone) {
-          /* intro: durante el primer segundo el cuenco crece desde abajo hasta su forma */
-          const k = smooth((elapsed - 250) / 1050);
-          current.tip = -0.3 + (target.tip + 0.3) * k;
-          current.half = 0.3 + (target.half - 0.3) * k;
-          current.soft = 0.1 + (target.soft - 0.1) * k;
-          if (elapsed > 1300) introDone = true;
-        } else {
-          /* después persigue al objetivo un 12% por frame: así el cambio con el scroll es suave y no a saltos */
-          current.tip += (target.tip - current.tip) * 0.12;
-          current.half += (target.half - current.half) * 0.12;
-          current.soft += (target.soft - current.soft) * 0.12;
-        }
-        /* drift añade una pequeña respiración con senos para que la luz nunca esté del todo quieta */
-        const drift = introDone ? 1 : clamp((elapsed - 250) / 1050);
-        drawBowl(current.tip + Math.sin(now * 0.00033 + 1.3) * 0.02 * drift, current.half + Math.sin(now * 0.0005) * 0.015 * drift, current.soft);
-        frame = requestAnimationFrame(loop);
-      };
-      frame = requestAnimationFrame(loop);
-    }
+    if (!reduceMotion) frame = requestAnimationFrame(loop);
 
     /* limpieza: se para el bucle y se quitan los listeners al salir de la página */
     return () => {

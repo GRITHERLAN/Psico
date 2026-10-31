@@ -12,9 +12,14 @@ export const Header = () => {
       el botón aparece cuando la frase central va por el 40% de su revelado.
       q es cuántas pantallas se han bajado; la fórmula es la misma de la maquetación para que coincidan los tiempos.
     */
+    /* último valor aplicado: solo se avisa a React cuando cambia, no en cada evento de scroll */
+    let last = null;
     const onScroll = () => {
       const q = window.scrollY / window.innerHeight;
-      setExpanded(clamp((q - 0.56) / 2.03) > 0.4);
+      const next = clamp((q - 0.56) / 2.03) > 0.4;
+      if (next === last) return;
+      last = next;
+      setExpanded(next);
     };
     onScroll();
     /* passive: true avisa al navegador de que no se va a cancelar el scroll, así va más fluido */
