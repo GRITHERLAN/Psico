@@ -45,6 +45,12 @@ const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[
 const HIGHLIGHT = hexToRgb('#5b7cf0');
 
 /*
+  en pantallas táctiles (móviles y tablets) el texto aparece ya terminado, sin revelado:
+  el blur por letra de la animación son cientos de filtros a la vez y la GPU del móvil no da abasto.
+*/
+const INSTANT = window.matchMedia('(pointer: coarse)').matches;
+
+/*
   paintLetters colorea las letras de un contenedor según el avance (progress, de 0 a 1).
   cada letra pasa por 3 fases: aparece desde el blur (0-35%), toma el color de acento (35-70%) y termina en su color final.
   spread controla cuántas letras se animan a la vez: más grande = ola más ancha.
@@ -53,6 +59,12 @@ const HIGHLIGHT = hexToRgb('#5b7cf0');
 */
 export const paintLetters = (container, progress, spread, final, accent, ghost) => {
   if (!container) return;
+  if (INSTANT) {
+    /* basta con pintarlo una vez en su estado final; las llamadas siguientes (scroll, frames) no hacen nada */
+    if (container.paintedFinal) return;
+    container.paintedFinal = true;
+    progress = 1;
+  }
   const chars = container.querySelectorAll('.ch');
   const finalColor = hexToRgb(final);
   const accentColor = hexToRgb(accent);
